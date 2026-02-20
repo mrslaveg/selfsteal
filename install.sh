@@ -69,7 +69,25 @@ else
     echo "Папка site/ содержит файлы — ок"
 fi
 
-# 5. Вопрос о запуске
+# 5. Открываем порт 80 в ufw (если ufw активен)
+if command -v ufw >/dev/null 2>&1; then
+    if sudo ufw status | grep -q "Status: active"; then
+        echo ""
+        echo "ufw активен → открываем порт 80 (HTTP)..."
+        sudo ufw allow http || {
+            echo "Предупреждение: не удалось выполнить 'ufw allow http'"
+            echo "Проверьте вручную: sudo ufw status"
+        }
+        # Можно добавить и 443, если захочешь:
+        # sudo ufw allow https
+    else
+        echo "ufw установлен, но не активен → порт открывать не нужно"
+    fi
+else
+    echo "ufw не найден → предполагаем, что firewall не используется или другой"
+fi
+
+# 6. Вопрос о запуске
 echo ""
 read -r -p "Запустить Caddy сейчас? [Y/n] " answer
 answer=${answer:-Y}   # по умолчанию Yes
@@ -100,17 +118,19 @@ case "$answer" in
         ;;
 esac
 
+# 7. Переходим в папку selfsteal (чтобы shell остался там)
 echo ""
-echo "Готово!"
+echo "Переходим в директорию проекта..."
+cd "$INSTALL_DIR"
+
 echo ""
-echo "Полезные пути:"
-echo "  $INSTALL_DIR/site/          ← файлы сайта"
-echo "  $INSTALL_DIR/Caddyfile      ← конфиг Caddy"
-echo "  $INSTALL_DIR/docker-compose.yml"
+echo "Готово! Вы уже находитесь в:"
+pwd
 echo ""
-echo "Для обновления в будущем:"
-echo "  cd $INSTALL_DIR"
-echo "  git pull"
-echo "  docker compose up -d"
+echo "Полезные команды:"
+echo "  docker compose logs -f          → смотреть логи в реальном времени"
+echo "  docker compose ps               → статус контейнеров"
+echo "  git pull && docker compose up -d → обновить сайт"
 echo ""
-echo "Логи в реальном времени:  docker compose logs -f"
+echo "Файлы сайта: ./site/"
+echo "Конфиг Caddy: ./Caddyfile"
