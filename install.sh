@@ -24,7 +24,7 @@ fi
 
 cd "$INSTALL_DIR" || exit 1
 
-# 2. Проверяем наличие docker-compose.yml (из репозитория)
+# 2. Проверяем наличие docker-compose.yml
 if [[ ! -f "docker-compose.yml" ]]; then
     echo "ОШИБКА: docker-compose.yml не найден!"
     echo "Убедись, что он запушен в репозиторий."
@@ -60,8 +60,8 @@ else
     echo "(чтобы сменить домен — удали Caddyfile и запусти скрипт заново)"
 fi
 
-# 4. Проверяем папку site
-mkdir -p site  # на всякий случай
+# 4. Папка site
+mkdir -p site
 if [[ -z "$(ls -A site 2>/dev/null)" ]]; then
     echo "Внимание: папка site/ пуста"
     echo "→ положи туда index.html и остальные файлы сайта"
@@ -69,34 +69,48 @@ else
     echo "Папка site/ содержит файлы — ок"
 fi
 
-# 5. Docker: остановка → pull → запуск
+# 5. Вопрос о запуске
 echo ""
-echo "Останавливаем старый контейнер (если был)..."
-docker compose down --remove-orphans 2>/dev/null || true
+read -r -p "Запустить Caddy сейчас? [Y/n] " answer
+answer=${answer:-Y}   # по умолчанию Yes
 
-echo "Обновляем образ caddy..."
-docker compose pull
+case "$answer" in
+    [Yy]*|"")
+        echo "Запускаем / перезапускаем контейнер..."
 
-echo "Запускаем..."
-docker compose up -d --remove-orphans
+        docker compose down --remove-orphans 2>/dev/null || true
+        docker compose pull
+        docker compose up -d --remove-orphans
+
+        echo ""
+        echo "Статус контейнеров:"
+        docker compose ps
+        echo ""
+        echo "Последние 30 строк логов:"
+        docker compose logs --tail 30
+        ;;
+    [Nn]*)
+        echo "Запуск пропущен."
+        echo "Чтобы запустить позже:"
+        echo "  cd $INSTALL_DIR"
+        echo "  docker compose up -d"
+        ;;
+    *)
+        echo "Неизвестный ответ → запуск пропущен."
+        ;;
+esac
 
 echo ""
 echo "Готово!"
 echo ""
-echo "Статус контейнеров:"
-docker compose ps
-echo ""
-echo "Последние логи:"
-docker compose logs --tail 30
-echo ""
-echo "Полные логи в реальном времени:  docker compose logs -f"
-echo ""
 echo "Полезные пути:"
-echo "  $INSTALL_DIR/site/          ← файлы сайта (обновляй git pull или вручную)"
+echo "  $INSTALL_DIR/site/          ← файлы сайта"
 echo "  $INSTALL_DIR/Caddyfile      ← конфиг Caddy"
 echo "  $INSTALL_DIR/docker-compose.yml"
 echo ""
-echo "Для обновления сайта / конфига в будущем:"
+echo "Для обновления в будущем:"
 echo "  cd $INSTALL_DIR"
 echo "  git pull"
 echo "  docker compose up -d"
+echo ""
+echo "Логи в реальном времени:  docker compose logs -f"
